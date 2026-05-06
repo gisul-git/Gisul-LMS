@@ -120,6 +120,10 @@ class AuthService:
         if not user:
             raise InvalidCredentialsException()
 
+        # OAuth-only accounts cannot use password login
+        if not user.hashed_password:
+            raise InvalidCredentialsException()
+
         # Check lockout before password verification
         if user.is_locked():
             raise AccountLockedException(
@@ -190,7 +194,84 @@ class AuthService:
             await self._token_service.revoke_token(raw_refresh_token)
         logger.info("user_logged_out", user_id=user_id)
 
-    # ─── Forgot / Reset Password ──────────────────────────────────────────────
+    # ─── Google OAuth ─────────────────────────────────────────────────────────
+
+    async def google_oauth_login(
+        self,
+        google_id: str,
+        email: str,
+        full_name: str,
+        email_verified: bool = False,
+        user_agent: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> tuple[str, str, User]:
+        """
+        Find or create a student account via Google OAuth.
+        Raises OAuthLoginForbiddenException if the account is admin/instructor
+        or if Google has not verified the email.
+        """
+        from app.core.constants import AuthProvider, VerificationStatus
+        from app.core.exceptions import OAuthLoginForbiddenException
+
+        # Reject unverified Google emails
+        if not email_verified:
+            logger.warning("google_oauth_unverified_email", email=email)
+            raise OAuthLoginForbiddenException()
+
+        user = await self._user_repo.find_by_email(email)
+
+        if user:
+            # Existing account — block non-students silently
+            if user.role != UserRole.STUDENT:
+                logger.warning("google_oauth_non_student_attempt", email=email, role=user.role)
+                raise OAuthLoginForbiddenException()
+
+            if not user.is_active:
+                raise OAuthLoginForbiddenException()
+
+            # Link google_id if not already linked
+            if not user.google_id:
+                from beanie.operators import Set
+                await user.update(Set({
+                    User.google_id: google_id,
+                    User.auth_provider: AuthProvider.GOOGLE,
+                    User.updated_at: datetime.now(timezone.utc),
+                }))
+                user.google_id = google_id
+        else:
+            # New user — create as student, email pre-verified by Google
+            try:
+                user = User(
+                    email=email,
+                    hashed_password=None,
+                    full_name=full_name,
+                    role=UserRole.STUDENT,
+                    auth_provider=AuthProvider.GOOGLE,
+                    google_id=google_id,
+                    email_verified=True,
+                    verification_status=VerificationStatus.VERIFIED,
+                )
+                await self._user_repo.create(user)
+                logger.info("google_oauth_student_created", user_id=str(user.id))
+            except Exception:
+                # Duplicate insert race — fetch the existing record
+                user = await self._user_repo.find_by_email(email)
+                if not user:
+                    raise OAuthLoginForbiddenException()
+
+        await self._user_repo.update_last_login(user)
+
+        access_token = create_access_token(subject=str(user.id), role=user.role)
+        refresh_token = await self._token_service.create_refresh_token(
+            user_id=str(user.id),
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+
+        logger.info("google_oauth_login_success", user_id=str(user.id))
+        return access_token, refresh_token, user
+
+
 
     async def forgot_password(self, email: str) -> None:
         """Always returns success to prevent email enumeration."""

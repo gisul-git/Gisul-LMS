@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Email verification
     email_verification_expire_hours: int = 24
 
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
+
     # CORS
     allowed_origins: str = "http://localhost:3000,http://localhost:8080"
 
