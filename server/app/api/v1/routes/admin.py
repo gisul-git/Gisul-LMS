@@ -63,6 +63,38 @@ async def list_users(
     )
 
 
+@router.get("/users/by-role/{role}")
+async def list_users_by_role(
+    role: str,
+    user_service: Annotated[UserService, Depends(get_user_service)],
+) -> SuccessResponse[list[UserResponse]]:
+    """List users filtered by role (student | instructor | admin)."""
+    from app.core.constants import UserRole
+    from app.core.exceptions import ValidationException
+
+    valid_roles = {r.value for r in UserRole}
+    if role not in valid_roles:
+        raise ValidationException(f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+
+    users = await user_service.list_by_role(role=role)
+    return SuccessResponse(
+        message=f"{role.capitalize()} list",
+        data=[
+            UserResponse(
+                id=str(u.id),
+                email=u.email,
+                full_name=u.full_name,
+                role=u.role,
+                is_active=u.is_active,
+                email_verified=u.email_verified,
+                created_at=u.created_at,
+                last_login_at=u.last_login_at,
+            )
+            for u in users
+        ],
+    )
+
+
 @router.patch("/users/{user_id}")
 async def update_user(
     user_id: str,

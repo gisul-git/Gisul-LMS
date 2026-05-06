@@ -34,5 +34,8 @@ class UserService:
     async def list_users(self, skip: int = 0, limit: int = 50) -> list[User]:
         return await self._repo.list_users(skip=skip, limit=limit)
 
+    async def list_by_role(self, role: str, skip: int = 0, limit: int = 200) -> list[User]:
+        return await self._repo.list_by_role(role=role, skip=skip, limit=limit)
+
     async def count(self) -> int:
         return await self._repo.count()
