@@ -63,5 +63,8 @@ class UserRepository:
     async def list_users(self, skip: int = 0, limit: int = 50) -> list[User]:
         return await User.find_all().skip(skip).limit(limit).to_list()
 
+    async def list_by_role(self, role: str, skip: int = 0, limit: int = 200) -> list[User]:
+        return await User.find(User.role == role).skip(skip).limit(limit).to_list()
+
     async def count(self) -> int:
         return await User.count()
