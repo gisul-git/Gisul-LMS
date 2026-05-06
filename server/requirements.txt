@@ -1,0 +1,17 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+beanie==1.27.0
+motor==3.6.0
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-jose[cryptography]==3.3.0
+passlib[argon2]==1.7.4
+argon2-cffi==23.1.0
+python-multipart==0.0.20
+sendgrid==6.11.0
+slowapi==0.1.9
+httpx==0.28.1
+python-dotenv==1.0.1
+structlog==24.4.0
+email-validator==2.2.0
+cryptography==43.0.3

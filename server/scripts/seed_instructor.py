@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""
+Seed an instructor user manually.
+Usage: python -m scripts.seed_instructor
+"""
+import asyncio
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from app.core.constants import UserRole, VerificationStatus
+from app.core.database import connect_db, disconnect_db
+from app.core.security import hash_password
+from app.models.user import User
+
+
+async def seed_instructor(email: str, full_name: str, password: str) -> None:
+    await connect_db()
+
+    existing = await User.find_one(User.email == email.lower())
+    if existing:
+        print(f"[ERROR] User with email '{email}' already exists.")
+        return
+
+    user = User(
+        email=email.lower(),
+        hashed_password=hash_password(password),
+        full_name=full_name,
+        role=UserRole.INSTRUCTOR,
+        email_verified=True,
+        verification_status=VerificationStatus.VERIFIED,
+        is_active=True,
+    )
+    await user.insert()
+    print(f"[OK] Instructor created: {email} (id={user.id})")
+    await disconnect_db()
+
+
+def prompt_input() -> tuple[str, str, str]:
+    print("=== Seed Instructor User ===")
+    email = input("Email: ").strip()
+    full_name = input("Full name: ").strip()
+    password = input("Password: ").strip()
+    return email, full_name, password
+
+
+if __name__ == "__main__":
+    email, full_name, password = prompt_input()
+    asyncio.run(seed_instructor(email, full_name, password))
