@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: lms_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: lms_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - lms_network
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lms_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: mongodb://mongodb:27017
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./keys:/app/keys:ro
+    networks:
+      - lms_network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: lms_gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    networks:
+      - lms_network
+
+  frontend:
+    build:
+      context: ./lms-client
+      dockerfile: Dockerfile
+    container_name: lms_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - lms_network
+
+volumes:
+  mongo_data:
+
+networks:
+  lms_network:
+    driver: bridge
