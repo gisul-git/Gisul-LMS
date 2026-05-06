@@ -7,6 +7,11 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
+class AuthProvider(str, Enum):
+    LOCAL = "local"
+    GOOGLE = "google"
+
+
 class TokenType(str, Enum):
     ACCESS = "access"
     REFRESH = "refresh"

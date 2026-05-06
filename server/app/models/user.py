@@ -4,13 +4,15 @@ from typing import Optional
 from beanie import Document, Indexed
 from pydantic import EmailStr, Field
 
-from app.core.constants import UserRole, VerificationStatus
+from app.core.constants import AuthProvider, UserRole, VerificationStatus
 
 
 class User(Document):
     email: Indexed(EmailStr, unique=True)  # type: ignore[valid-type]
-    hashed_password: str
+    hashed_password: Optional[str] = None  # None for OAuth-only accounts
     full_name: str
+    auth_provider: AuthProvider = AuthProvider.LOCAL
+    google_id: Optional[str] = None
     role: UserRole = UserRole.STUDENT
     is_active: bool = True
     email_verified: bool = False
@@ -30,6 +32,7 @@ class User(Document):
         indexes = [
             "email",
             "role",
+            "google_id",
         ]
 
     def is_locked(self) -> bool:

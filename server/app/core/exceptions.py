@@ -82,3 +82,12 @@ class InvalidTokenException(AppException):
             detail=detail,
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+class OAuthLoginForbiddenException(AppException):
+    def __init__(self):
+        # Generic — never reveal why OAuth login was rejected
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Login failed",
+        )
